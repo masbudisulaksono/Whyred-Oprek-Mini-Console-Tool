@@ -525,9 +525,9 @@ do
     echo "=========="
     echo
     echo "Current state:"
-    adb devices 2>&1 | grep device\>
-    if [ $? -ne 0 ]; then adb devices 2>&1 | grep recovery\>
-    if [ $? -ne 0 ]; then fastboot devices 2>&1 | grep fastboot\>
+    adb devices 2>&1 | grep "device\>"
+    if [ $? -ne 0 ]; then adb devices 2>&1 | grep "recovery\>"
+    if [ $? -ne 0 ]; then fastboot devices 2>&1 | grep "fastboot\>"
     if [ $? -ne 0 ]; then echo "No connection. Please connect your device to PC."
     fi; fi; fi
     echo
