@@ -1,6 +1,6 @@
 #!/sbin/sh
 
-ui_print "Unmounting partitions . . ."
+echo "Unmounting system partition..."
 umount -l /system
 umount -l /system_root
 

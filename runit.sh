@@ -1,28 +1,32 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Whyred Oprek Mini Console Tool for Linux
-# ========================================
+# Whyred Console Toolkit for Linux
+# ================================
 #
 #
 # Created by:     Faizal Hamzah
-#                 The Firefox Flasher - The Firefox Foundation
-# Created time:   June 14, 2020   10:34pm
-# Modified time:  June 22, 2020   4:07am
+#                 The Firefox Flasher
+#                 The Firefox Foundation
+# Created time:   June 14, 2020      10:34pm
+# Modified time:  September 2, 2020  1:50pm
 #
 #
 # Description:
-# This program was written and created by Faizal Hamzah with the aim of making
-# it easier for users to do the work of modifying Android mobile devices.
+# This program was written and created by Faizal Hamzah with the aim of
+# making it easier for users to do the work of modifying Android mobile
+# devices.
 #
 # Facilities of this program, include:
-#   1.  Check the status bootloader
-#   2.  Flash TWRP
-#   3.  Flash LazyFlasher
-#   4.  Flash Camera2 API
-#   5.  Flash Root Access
+#  1.  Check the status bootloader (e.g. Unlock and Lock)
+#  2.  Flash custom reecovery/TWRP
+#  3.  Flash Disable DM-Verity and Force Encryption
+#  4.  Flash Camera2 API Enabler
+#  5.  Flash Root Access
+#  6.  Run Terminal Android in PC
+#  7.  Switch ADB Connection
 #
-# This program is only for those who have a Xiaomi Redmi Note 5 Global/Pro
-# phone (codename: Whyred)
+# This program is only for those who have a Xiaomi Redmi Note 5
+# Global/Pro phone (codename: Whyred)
 #
 # Special thanks:
 # •  Google - Android
@@ -38,835 +42,1118 @@
 
 # begin the program
 
+######## FUNCTIONS STATE ########
+
 # Shortcut functions
 # Main menu will need the shortcut for their option
 # This is will running any execution and put to shortut
-check-adb()
-{
-	echo "Checking ADB and Fastboot programs..."
-	if ! [ -x $(command -v adb) ]
-		then
-			echo "$errorp  ADB and Fastboot not installed."
-			adbfastboot_notfound=1
-		fi
-	if ! [ -x $(command -v fastboot) ]
-		then
-			echo "$errorp  ADB and Fastboot not installed."
-			adbfastboot_notfound=1
-	  fi
-}
 
-check-devices1()
-{
-	unset no_connection
-	echo "Checking connection..."
-	adb devices 2>&1 | grep "device\>"
-	if [ $? -ne 0 ]
-		then
-			echo "$errorp  Your device not connected. Check the driver or USB debugging."
-			while true
-			do
-				read -n1 -p "Try again? [Y/N] " yn
-				echo
-				case $yn in
-					[Yy]* )	adb devices 2>&1 | grep "device\>"
-							if [ $? -ne 0 ]; then
-								echo "$errorp  Your device not connected. Check the driver or USB debugging."
-								continue
-							fi
-							break
-							;;
-					[Nn]* )	no_connection=1
-							if ! [ -z $reboot_recovery ]; then break; fi
-							if ! [ -z $reboot_system ]; then break; fi
-							if ! [ -z $reboot_bootloader ]; then break; fi
-							break
-							;;
-					* )		continue
-							;;
-				esac
-			done
-		fi
-	if ! [ -z $reboot_recovery ]; then recovery_adb=1; fi
-	if ! [ -z $reboot_system ]; then reboot_adb=1; fi
-	if ! [ -z $reboot_bootloader ]; then bootloader_adb=1; fi
-}
-
-check-devices2()
-{
-	unset no_connection
-	echo "Checking connection..."
-	adb devices 2>&1 | grep "recovery\>"
-	if [ $? -ne 0 ]
-		then
-			echo "$errorp  Your device not connected in recovery. Check the driver or reboot recovery again."
-			while true
-			do
-				read -n1 -p "Try again? [Y/N] " yn
-				echo
-				case $yn in
-					[Yy]* )	adb devices 2>&1 | grep "recovery\>"
-							if [ $? -ne 0 ]; then
-								echo "$errorp  Your device not connected in recovery. Check the driver or reboot recovery again."
-								continue
-							fi
-							break
-							;;
-					[Nn]* )	no_connection=1
-							if ! [ -z $reboot_recovery ]; then break; fi
-							if ! [ -z $reboot_system ]; then break; fi
-							if ! [ -z $reboot_bootloader ]; then break; fi
-							break
-							;;
-					* )		continue
-							;;
-				esac
-			done
-		fi
-	if ! [ -z $reboot_recovery ]; then recovery_adb=1; fi
-	if ! [ -z $reboot_system ]; then reboot_adb=1; fi
-	if ! [ -z $reboot_bootloader ]; then bootloader_adb=1; fi
-}
-
-check-fastboot()
-{
-	unset no_connection
-	echo "Checking fastboot connection..."
-	fastboot $* devices 2>&1 | grep "fastboot\>"
-	if [ $? -ne 0 ]
-		then
-			echo "$errorp  Your device not connected."
-			no_connection=1
-		fi
-	if ! [ -z $reboot_recovery ]; then recovery_fastboot=1; fi
-	if ! [ -z $reboot_system ]; then reboot_fastboot=1; fi
-	if ! [ -z $reboot_bootloader ]; then bootloader_fastboot=1; fi
-}
-
-check-codename()
-{
-	echo "Checking require codename devices..."
-	fastboot $* getvar product 2>&1 | grep "^product: *whyred"
-	if [ $? -ne 0 ]
-		then
-			echo "$errorp  Your device is not Xiaomi Redmi Note 5/Pro. The code must 'whyred'."
-			codename_false=1
-	  fi
-}
-
-check-unlock()
-{
-	echo "Checking the device bootloader..."
-	CURRENT_RESULT=true
-	result=`fastboot $* oem device-info 2>&1 | grep "Device unlocked:" | cut -f 4 -d ' '`
-	if [ -z "$result" ]; then result=false; fi
-	if [ $result -ne $CURRENT_RESULT ]; then
-		echo "$errorp  Your device locked bootloader."
-	elif [ $result -eq $CURRENT_RESULT ]; then
-		echo "$infop  Your device already unlocked bootloader."
+######## CHECKING ADB AND FASTBOOT PROGRAMS ########
+function check-adb () {
+	print_console "Checking ADB and Fastboot programs..."
+	if ! [ -x "$(command -v adb)" ] && ! [ -x "$(command -v fastboot)" ]; then
+		print_console "$errorp  ADB and Fastboot not installed."
+		adbfastboot_notfound=1
 	fi
 }
 
-check-antirollback()
-{
-	echo "Checking device antirollback version..."
+######## CHECKING DEVICES ON NORMAL STATE ########
+function check-devices1 () {
+	if [ -z $back ]; then
+		print_console "Checking connection..."
+	fi
+	for var in no_connection back; do unset $var; done
+	if [ -z $SESSION_CON_ADB ]; then
+		adb wait-for-device
+	else
+		sleep 0.1
+	fi
+	if ! (adb devices 2>&1 | grep "device\>"); then
+		print_console "$errorp  Your device not connected. Check the driver or USB debugging."
+		while true; do
+			prompts "Try again? [Y/N] " yn
+			case $yn in
+				Y|y )	back=1
+						print_console "Reconnecting..."
+						check-devices1
+						break
+						;;
+				N|n )	no_connection=1
+						break
+						;;
+				* )		continue;;
+			esac
+		done
+	else
+		if ! [ -z $reboot_recovery ]; then
+			recovery_adb=1
+		elif ! [ -z $reboot_system ]; then
+			reboot_adb=1
+		elif ! [ -z $reboot_bootloader ]; then
+			bootloader_adb=1
+		fi
+	fi
+}
+
+######## CHECKING DEVICES ON RECOVERY STATE ########
+function check-devices2 () {
+	if [ -z $back ]; then
+		print_console "Checking connection..."
+	fi
+	for var in no_connection back; do unset $var; done
+	if [ -z $SESSION_CON_ADB ]; then
+		adb wait-for-recovery
+	else
+		sleep 0.1
+	fi
+	if ! (adb devices 2>&1 | grep "recovery\>"); then
+		print_console "$errorp  Your device not connected in recovery. Check the driver or reboot recovery again."
+		while true; do
+			prompts "Try again? [Y/N] " yn
+			case $yn in
+				Y|y )	back=1
+						print_console "Reconnecting..."
+						check-devices2
+						break
+						;;
+				N|n )	no_connection=1
+						break
+						;;
+				* )		continue;;
+			esac
+		done
+	else
+		if ! [ -z $reboot_recovery ]; then
+			recovery_adb=1
+		elif ! [ -z $reboot_system ]; then
+			reboot_adb=1
+		elif ! [ -z $reboot_bootloader ]; then
+			bootloader_adb=1
+		fi
+	fi
+}
+
+######## CHECKING DEVICES ON NETWORK STATE ########
+######## SWITCHING ADB USB TO ADB NETWORK ########
+function switch-adb () {
+	unset no_connection
+	if [ -z $ippadrs ]; then
+		print_console "Identifying IP Address from your device..."
+	fi
+	ipaddrs=$(adb shell ip addr | grep "wlan0" | grep inet | cut -f 2)
+	ipaddrs=$(echo $ipaddrs | cut -f 1 -d '/') && ipaddrs=$(echo $ipaddrs | cut -f 2 -d ' ')
+	tcport=5555
+	if (adb devices 2>&1 | grep "$ipaddrs:$tcport" >& /dev/null); then
+		while true; do
+			print_console "$infop  Your device already connected on network."
+			prompts "Do you want to disable ADB network? [Y/N] " yn
+			case $yn in
+				Y|y )	back=1
+						print_console "Disconnecting ADB from network..."
+						adb disconnect >& /dev/null
+						print_console "Please plug USB cable on this PC and your device."
+						pause
+						print_console "Connecting..."
+						adb wait-for-device
+						if ! (adb usb 2>&1); then
+							print_console "$errorp  Connected failure. Please try again."
+							end; pause
+						else
+							print_console "Successfully connected to USB."
+							for var in tcport ipaddrs; do unset $var; done
+							end; pause
+						fi
+						break
+						;;
+				N|n )	back=1
+						break
+						;;
+				* )		continue;;
+			esac
+		done
+	else
+		print_console "Disconnecting ADB from USB..."
+		adb disconnect >& /dev/null
+		adb tcpip $tcport
+		print_console "Please unplug USB cable on this PC and your device."
+		pause
+		print_console "Connecting to your IP Address and ADB Server Port..."
+		adb connect $ipaddrs:$tcport
+		if ! (adb devices 2>&1 | grep "$ipaddrs:$tcport"); then
+			print_console "$errorp  Connected failure. Plug your device and try again."
+			adb wait-for-device
+			adb usb 2>&1
+		else
+			print_console "$infop  Success connected. To back the USB, disable network at your device."
+		fi
+	fi
+}
+
+######## CHECKING DEVICES ON BOOTLOADER STATE ########
+function check-fastboot () {
+	unset no_connection
+	print_console "Checking fastboot connection..."
+	if ! (fastboot devices 2>&1 | grep "fastboot\>"); then
+		print_console "$errorp  Your device not connected."
+		no_connection=1
+	else
+		if ! [ -z $reboot_recovery ]; then
+			recovery_fastboot=1
+		elif ! [ -z $reboot_system ]; then
+			reboot_fastboot=1
+		elif ! [ -z $reboot_bootloader ]; then
+			bootloader_fastboot=1
+		fi
+	fi
+}
+
+######## CHECKING DEVICES CODENAME ########
+function check-codename () {
+	print_console "Checking require codename devices..."
+	if ! (fastboot getvar product 2>&1 | grep "^product: *whyred$"); then
+		print_console "$errorp  Your device is not Xiaomi Redmi Note 5/Pro. The code must 'whyred'."
+		codename_false=1
+	fi
+}
+
+######## CHECKING BOOTLOADER STATUS AND MAY GIVE 2 OPTIONS ########
+######## 1.  UNLOCK BOOTLOADER
+######## 2.  LOCK BOOTLOADER
+function check-unlock () {
+	print_console "Checking the device bootloader..."
+	CURRENT_RESULT=true
+	result=$(fastboot oem device-info 2>&1 | grep "Device unlocked:" | cut -f 4 -d ' ')
+	if [ -z $result ]; then
+		result=false
+	fi
+	if [ "$result" != "$CURRENT_RESULT" ]; then
+		while true; do
+			if ($dialog						\
+				--title "Unlock bootloader"	\
+				--yesno						\
+"$infop  Your device locked bootloader.
+This script will be unlock using Mi Unlock Tool. For unlock bootloader:
+  •  You must have a Mi Account.
+  •  Activate OEM unlock, USB debugging and request the Mi Account
+     permission to be authorized in developer options > Mi Unlock
+     Status.
+	 
+If not yet do it, follow this instruction and run this again.
+Are you ready?" 17 75); then
+				if ! [ -x "$(command -v java)" ]; then
+					$dialog --msgbox "Mi Unlock Tool requires OpenJDK. So install it first before unlocking bootloader." 8 48
+					break
+				else JAVACMD="$(command -v java)"; fi
+				if ! [ -f "$BASEDIR/bin/Mi-Unlock-Tool.jar" ]; then
+					curl -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" http://us1.fastandroid.download/tool/MiUnlock-Linux-Mac.zip
+					unzip -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" MiUnlockTool/bin/MiUnlockTool.jar -d "$BASEDIR/tmp/"
+					mv "$BASEDIR/tmp/MiUnlockTool/bin/MiUnlockTool.jar" "$BASEDIR/bin/Mi-Unlock-Tool.jar"
+					rm -rf "$BASEDIR/tmp/MiUnlockTool"
+					rm -f "$BASEDIR/tmp/Mi-Unlock-Tool.zip"
+				fi
+				while true; do
+					if (mi_username=$($dialog														\
+									  --title "Unlock bootloader"									\
+									  --inputbox "Type your Mi Account username/email/phone:" 9 51	\
+									  3>&1 1>&2 2>&3)); then
+						if [ "$mi_username" == "" ]; then
+							continue
+						fi
+						break
+					else
+						break
+					fi
+				done
+				while true; do
+					if (mi_password=$($dialog												\
+									  --title "Unlock bootloader"							\
+									  --passwordbox "Type your Mi Account password:" 9 51	\
+									  3>&1 1>&2 2>&3)); then
+						if [ "$mi_password" == "" ]; then
+							continue
+						fi
+						break
+					else
+						break
+					fi
+				done
+				while true; do
+					if ($dialog																		\
+						--title "Unlock bootloader"													\
+						--yesno "Unlocking bootloader that will erase all data. Do you agree?" 9 45); then
+						"$JAVACMD" -jar "$BASEDIR/bin/Mi-Unlock-Tool.jar" $mi_username $mi_password
+						break
+					else
+						break
+					fi
+				done
+				break
+			else
+				break
+			fi
+		done
+	elif [ "$result" == "$CURRENT_RESULT" ]; then
+		while true; do
+			if ($dialog						\
+				--title "Lock bootloader"	\
+				--yesno						\
+"$infop  Your device already unlocked bootloader.
+Do you want to lock bootloader?" 8 51); then
+				if ! (fastboot oem lock 2>&1); then
+					print_console "$errorp  Failed locked."
+				fi
+				break
+			else
+				break
+			fi
+		done
+	fi
+}
+
+######## CHECKING ANTI-ROLLBACK SYSTEM ########
+function check-antirollback () {
+	print_console "Checking device antirollback version..."
 	CURRENT_ANTI_VER=4
-	arbver=`fastboot $* getvar anti 2>&1 | grep anti: | cut -f 2 -d ' '`
-	if [ -z "$arbver" ]; then arbver=0; fi
+	arbver=$(fastboot getvar anti 2>&1 | grep anti: | cut -f 2 -d ' ')
+	if [ -z $arbver ]; then
+		arbver=0
+	fi
 	if [ $arbver -gt $CURRENT_ANTI_VER ]; then
-		echo "$errorp  Current device antirollback version is greater than this package."
+		print_console "$errorp  Current device antirollback version is greater than this package."
 		largest_anti=1
 	elif [ $arbver -eq $CURRENT_ANTI_VER ]; then
-		fastboot $* flash antirbpass ./recovery/dummy.img
-		if [ $? -ne 0 ]
-			then
-				echo "$errorp  Failed flash 'antirbpass'."
-				error=1
-			else
-				echo "$infop  Flash 'antirbpass' success."
-			fi
-	  fi
-}
-
-flash-twrp()
-{
-	while true
-	do
-		clear
-		echo
-		echo "FLASH TWRP"
-		echo "==========="
-		echo
-		echo
-		echo "   1.)  Team Win Recovery Project"
-		echo "   2.)  Orange Fox Recovery"
-		echo "   3.)  PitchBlack Recovery Project"
-		echo
-		echo "   A.)  Let me choose"
-		echo "   Q.)  Back to main menu"
-		echo
-		read -p "Select TWRP version: " aq123
-		echo
-		case $q123 in
-			1 )		recoveryimg=./recovery/twrp.img
-					break
-					;;
-			2 )		recoveryimg=./recovery/ofox.img
-					break
-					;;
-			3 )		recoveryimg=./recovery/pbrp.img
-					break
-					;;
-			[Aa]* )	while true; do
-					echo "Type a img file (with directory if there in outside)"
-					read -p ">" filename
-					case $filename in
-						$filename )	recoveryimg=$filename
-									if ! [ -f $recoveryimg ]; then
-										echo "Img file not found."
-										continue
-									fi
-									break
-									;;
-						* )			continue
-									;;
-					esac; done
-					;;
-			[Qq]* )	twrp_exit=1
-					break
-					;;
-			* )		continue
-					;;
-		esac
-	done
-}
-
-check-sideload()
-{
-	echo "$cautionp  Before execution, select ADB Sideload first on recovery."
-	read -n1 -srp "Press any key to continue..."
-	echo
-	adb devices 2>&1 | grep "sideload\>" 
-	if [ $? -ne 0 ]
-		then
-			echo "$errorp  Your device not connected in sideload. Check the driver or reboot recovery again."
-			while true
-			do
-				read -n1 -p "Try again? [Y/N] " yn
-				echo
-				case $yn in
-					[Yy]* )	adb devices 2>&1 | grep "sideload\>"
-							if [ $? -ne 0 ]; then
-								echo "$errorp  Your device not connected in sideload. Check the driver or reboot recovery again."
-								continue
-							fi
-							break
-							;;
-					[Nn]* )	no_connection=1
-							break
-							;;
-					* )		continue
-							;;
-				esac
-			done
-	  fi
-}
-
-mount-system()
-{
-	>& /dev/null 2>&1 adb push ./data/mount-system.sh /tmp/mount-system.sh
-	>& /dev/null 2>&1 adb push ./data/unmount-system.sh /tmp/unmount-system.sh
-	echo "Mounting /system..."
-	>& /dev/null 2>&1 adb shell '/sbin/busybox /tep/mount-system.sh'
-	>& /dev/null 2>&1 adb shell '/sbin/sh /tmp/mount-system.sh'
-	for s in /system /system/system
-	do
-		>& /dev/null 2>&1 adb pull $s/build.prop ./tmp/build.prop
-	done
-	if ! [ -f ./tmp/build.prop ]
-		then
-			echo "$errorp  /system not yet mounted."
-			while true
-			do
-				read -n1 -p "Try again? [Y/N] " yn
-				echo
-				case $yn in
-					[Yy]* )	>& /dev/null 2>&1 adb shell '/sbin/busybox /tmp/mount-system.sh'
-							>& /dev/null 2>&1 adb shell '/sbin/sh /tmp/mount-system.sh'
-							for s in /system /system/system; do
-								>& /dev/null 2>&1 adb pull $s/build.prop ./tmp/build.prop
-							done
-							if ! [ -f ./tmp/build.prop ]; then
-								echo "$errorp  /system not yet mounted."
-								continue
-							else
-								rm -f ./tmp/build.prop
-								break
-							fi
-							;;
-					[Nn]* )	>& /dev/null 2>&1 adb shell '/sbin/busybox /tmp/unmount-system.sh'
-							>& /dev/null 2>&1 adb shell '/sbin/sh /tmp/unmount-system.sh'
-							not_mount=1
-							break
-							;;
-					* )		continue
-							;;
-				esac
-			done
+		if ! fastboot flash antirbpass "$BASEDIR/recovery/dummy.img"; then
+			print_console "$errorp  Failed flash 'antirbpass'."
 		else
-			rm -f ./tmp/build.prop
-	 fi
-}
-
-write-prop()
-{
-	for s in /system /system/system
-	do
-		echo "Patching addon.d Camera2 API..."
-		>& /dev/null 2>&1 adb shell 'mkdir $s/addon.d'
-		>& /dev/null 2>&1 adb push ./data/cam2api_addon.sh $s/addon.d/34-camera.sh
-		>& /dev/null 2>&1 adb shell 'chmod -R 0755 $s/addon.d'
-		>& /dev/null 2>&1 adb shell 'chmod -R 0755 $s/addon.d/34-camera.sh'
-		echo "Patching /system/build.prop Camera2 API..."
-		>& /dev/null 2>&1 adb shell 'cat $s/build.prop' | grep "^persist.vendor.camera.HAL3.enabled=1"
-		if [ $? -ne 0 ]; then
-			>& /dev/null 2>&1 adb shell 'echo "persist.vendor.camera.HAL3.enabled=1" >> $s/build.prop'
+			print_console "$infop  Flash 'antirbpass' success."
 		fi
-		>& /dev/null 2>&1 adb shell 'setprop persist.vendor.camera.HAL3.enabled 1'
-		>& /dev/null 2>&1 adb shell 'cat $s/build.prop' | grep "^persist.camera.HAL3.enabled=1"
-		if [ $? -ne 0 ]; then
-			>& /dev/null 2>&1 adb shell 'echo "persist.camera.HAL3.enabled=1" >> $s/build.prop'
-		fi
-		>& /dev/null 2>&1 adb shell 'setprop persist.camera.HAL3.enabled 1'
-		>& /dev/null 2>&1 adb shell 'cat $s/build.prop' | grep "^persist.camera.eis.enable=1"
-		if [ $? -ne 0 ]; then
-			>& /dev/null 2>&1 adb shell 'echo "persist.camera.eis.enable=1" >> $s/build.prop'
-		fi
-		>& /dev/null 2>&1 adb shell 'setprop persist.camera.eis.enable 1'
-	done
-}
-
-unmount-system()
-{
-	echo "Unmounting /system..."
-	>& /dev/null 2>&1 adb shell '/sbin/busybox /tmp/unmount-system.sh'
-	>& /dev/null 2>&1 adb shell '/sbin/sh /tmp/unmount-system.sh'
-}
-
-flash-root()
-{
-	while true
-	do
-		clear
-		echo
-		echo "INSTALL ROOT"
-		echo "============="
-		echo
-		echo "   1.)  SuperSU"
-		echo "   2.)  Magisk"
-		echo
-		echo "   Q.)  Back to main menu"
-		echo
-		read -p "Select TWRP version: " q12
-		echo
-		case $q12 in
-			1 )		rootsel=SuperSU
-					rootzip=./data/supersu.zip
-					;;
-			2 )		rootsel=Magisk
-					rootzip=./data/magisk.zip
-					;;
-			[Qq]* ) root_exit=1
-					break
-					;;
-			* )		continue
-					;;
-		esac
-		echo "$cautionp  Before execution, select ADB Sideload first on recovery."
-		read -n1 -srp "Press any key to continue..."
-		echo
-		adb devices 2>&1 | grep "sideload\>"
-		if [ $? -ne 0 ]
-			then
-				echo "$errorp  Your device not connected. Check the driver or USB debugging."
-				while true
-				do
-					read -n1 -p "Try again? [Y/N] " yn
-					echo
-					case $yn in
-						[Yy]* )	adb devices 2>&1 | grep "sideload\>"
-								if [ $? -ne 0 ]; then
-									echo "$errorp  Your device not connected in sideload."
-									continue
-								fi
-								break
-								;;
-						[Nn]* )	no_connection=1
-								break
-								;;
-						* )		continue
-								;;
-					esac
-				done
-			fi
-		case $q12 in
-			1 )		break
-					;;
-			2 )		break
-					;;
-		esac
-	done
-}
-
-reboot-recovery()
-{
-	if ! [ -z $recovery_adb ]
-		then
-			echo "Rebooting to recovery..."
-			adb reboot recovery
-			if [ $? -ne 0 ]; then
-				echo "$errorp  Cannot boot to recovery."
-			fi
-		fi
-	if ! [ -z $recovery_fastboot ]
-		then
-			if [ -z $recoveryimg ]; then
-				echo "Booting to custom recovery..."
-				recoveryimg=./recovery/ofox.img
-			else
-				echo "Rebooting to recovery..."
-			fi
-			fastboot $* boot $recoveryimg
-			if [ $? -ne 0 ]; then
-				echo "$errorp  Cannot boot to recovery."
-			else
-				echo "$infop  Download 'recovery' to 'boot' success."
-			fi
-	  fi
-}
-
-reboot-systemdevices()
-{
-	echo "Rebooting..."
-	if ! [ -z $reboot_adb ]
-		then
-			adb reboot
-			if [ $? -ne 0 ]; then
-				echo "$errorp  Cannot reboot."
-			fi
-		fi
-	if ! [ -z $reboot_fastboot ]
-		then
-			>& /dev/null 2>&1 fastboot $* reboot
-			if [ $? -ne 0 ]; then
-				echo "$errorp  Cannot reboot."
-			fi
-	  fi
-}
-
-reboot-bootloader()
-{
-	echo "Rebooting to bootloader..."
-	if ! [ -z $bootloader_adb ]
-		then
-			adb reboot bootloader
-			if [ $? -ne 0 ]; then
-				echo "$errorp  Cannot reboot to bootloader."
-			fi
-		fi
-	if ! [ -z $bootloader_fastboot ]
-		then
-			>& /dev/null 2>&1 fastboot $* reboot bootloader
-			if [ $? -ne 0 ]; then
-				echo "$errorp  Cannot reboot to bootloader."
-			fi
-	  fi
-}
-
-start()
-{
-	echo "------------------------------------ START ------------------------------------"
-}
-
-pause()
-{
-	echo "------------------------------------- END -------------------------------------"
-	read -n1 -srp "Press any key to continue..."
-	echo
-}
-
-
-
-# First place to start the execution
-whoami | grep "root" >& /dev/null 2>&1
-if [ $? -ne 0 ]
-	then
-		echo "You have not allowed to access this program."
-		echo "Please run this script as root with one of type:"
-		echo "  -  sudo ./`basename $0`"
-		echo "  -  sudo bash `basename $0`"
-		echo "  -  su -c ./`basename $0`"
-		exit 1
 	fi
+}
 
-echo "You will running to this program. If you are sure to modificate your device"
-echo "press Y to allow and continue. Otherwise if deny and get out this program,"
-echo "press N."
-echo
-while true
-do
-	read -n1 -p "Do you agree? [Y/N] " yn
-	echo
-	case $yn in
-		[Yy]* )	break
-				;;
-		[Nn]* )	exit 1
+######## FLASH TWRP MENU AND FLASH IT ########
+function flash-twrp () {
+	while true; do
+		choice=$($dialog											\
+				 --title "Flash TWRP"								\
+				 --menu "Choose TWRP you want to flash"	12 52 4		\
+					1 " Team Win Recovery Project"					\
+					2 " Orange Fox Recovery"						\
+					3 " PitchBlack Recovery Project"				\
+					4 " Let me choose"								\
+				 --ok-button "ENTER to next"						\
+				 --cancel-button "ESC to back"						\
+				 3>&1 1>&2 2>&3)
+		
+		case $choice in
+			1 )	if ! [ -f "$BASEDIR/recovery/twrp.img" ]; then
+					curl -o "$BASEDIR/recovery/twrp.img" https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img
+				fi
+				recoveryimg="$BASEDIR/recovery/twrp.img"
 				break
 				;;
-		* )		continue
+			2 )	if ! [ -f "$BASEDIR/recovery/ofox.img" ]; then
+					curl -o "$BASEDIR/tmp/ofox.zip" https://files.orangefox.tech/OrangeFox-Beta/whyred/OrangeFox-R11.0_1-Beta-whyred.zip
+					unzip -o "$BASEDIR/tmp/ofox.zip" recovery.img -d "$BASEDIR/recovery/"
+					mv "$BASEDIR/recovery/recovery.img" "$BASEDIR/recovery/ofox.img"
+					rm -f "$BASEDIR/tmp/ofox.zip"
+				fi
+				recoveryimg="$BASEDIR/recovery/ofox.img"
+				break
 				;;
+			3 )	if ! [ -f "$BASEDIR/recovery/pbrp.img" ]; then
+					curl -o "$BASEDIR/tmp/pbrp.zip" https://udomain.dl.sourceforge.net/project/pbrp/whyred/PBRP-whyred-3.0.0-20200801-1730-OFFICIAL.zip
+					unzip -o "$BASEDIR/tmp/pbrp.zip" TWRP/recovery.img -d "$BASEDIR/recovery/"
+					mv "$BASEDIR/recovery/TWRP/recovery.img" "$BASEDIR/recovery/pbrp.img"
+					rm -rf "$BASEDIR/recovery/TWRP"
+					rm -f "$BASEDIR/tmp/pbrp.zip"
+				fi
+				recoveryimg="$BASEDIR/recovery/pbrp.img"
+				break
+				;;
+			4 )	while true; do
+					if (recoveryimg=$($dialog												\
+									  --title "Flash TWRP"									\
+									  --inputbox "Type an img file (with directory): " 8 50	\
+									  3>&1 1>&2 2>&3)); then
+						while true; do
+							if ! [ -f "$recoveryimg" ]; then
+								if (recoveryimg=$($dialog																		\
+												  --title "Flash TWRP"															\
+												  --inputbox "Image file not found.\nType an img file (with directory): " 9 50	\
+												  3>&1 1>&2 2>&3)); then
+									continue
+								else
+									twrp_exit=1
+								fi
+								break
+							fi
+							if ! [ -z $twrp_exit ]; then
+								flash_twrp
+								break
+							fi
+							break
+						done
+					else
+						twrp_exit=1
+					fi
+					break
+				done
+				;;
+			* )	twrp_exit=1
+				break
+				;;
+		esac
+		if ! [ -z $twrp_exit ]; then
+			flash_twrp
+			break
+		fi
+	done
+}
+
+######## CHECKING DEVICES ON SIDELOAD STATE ########
+######## IF YOU WANNA FLASH BY ADB SIDELOAD
+function check-sideload () {
+	if [ -z $back ]; then
+		unset no_connection
+		print_console "$cautionp  Select ADB Sideload on Recovery menu > Advanced, then swipe and automatically flash."
+	fi
+	unset back
+	adb wait-for-sideload
+	if ! (adb devices 2>&1 | grep "sideload\>"); then
+		print_console "$errorp  Your device not connected in sideload. Check the driver or reboot recovery again."
+		while true; do
+			prompts "Try again? [Y/N] " yn
+			case $yn in
+				Y|y )	back=1
+						print_console "Reconnecting..."
+						check-sideload
+						break
+						;;
+				N|n )	no_connection=1
+						break
+						;;
+				* )		continue;;
+			esac
+		done
+	fi
+}
+
+######## CAMERA2 API ENABLER MENU ########
+
+######## MOUNTING /system ########
+function mount-system () {
+	if [ -z $back ]; then
+		MOUNT_SCRIPT="mount-system.sh"
+		UNMOUNT_SCRIPT="unmount-system.sh"
+		>& /dev/null 2>&1 adb push "$BASEDIR/data/$MOUNT_SCRIPT" /tmp/
+		>& /dev/null 2>&1 adb push "$BASEDIR/data/$UNMOUNT_SCRIPT" /tmp/
+		>& /dev/null 2>&1 adb shell "chmod 0755 /tmp/$MOUNT_SCRIPT"
+		>& /dev/null 2>&1 adb shell "chmod 0755 /tmp/$UNMOUNT_SCRIPT"
+	fi
+	unset back
+	adb shell "/sbin/sh /tmp/$MOUNT_SCRIPT"
+	for SYSTEM_MOUNT in '/system' '/system/system' '/system_root' '/system_root/system'; do >& /dev/null 2>&1 adb pull $SYSTEM_MOUNT/build.prop "$BASEDIR/tmp/"; done
+	if ! [ -f "$BASEDIR/tmp/build.prop" ]; then
+		print_console "$errorp  /system not yet mounted."
+		while true; do
+			prompts "Try again? [Y/N] " yn
+			case $yn in
+				Y|y )	back=1
+						mount-system
+						break
+						;;
+				N|n )	not_mount=1
+						break
+						;;
+				* )		continue;;
+			esac
+		done
+	else rm -f "$BASEDIR/tmp/build.prop"; fi
+}
+
+######## ACTIVATE CAMERA2 API SCRIPT ON ADDON AND BUILD.PROP ########
+function write-prop () {
+	adb push "$BASEDIR/data/patch.sh" /tmp/
+	adb shell "chmod 0755 /tmp/patch.sh"
+	adb shell "/sbin/sh /tmp/patch.sh"
+}
+
+######## UNMOUNTING /system ########
+function unmount-system () {
+	adb shell "/sbin/sh /tmp/$UNMOUNT_SCRIPT"
+	>& /dev/null 2>&1 adb shell "rm -rf /tmp/*"
+}
+
+######## FLASH ROOT MENU AND FLASH IT ########
+function flash-root () {
+	while true; do
+		choice=$($dialog												\
+				 --title "Install Root"									\
+				 --menu "Choose Root app you want to install:" 11 52	\
+				 3														\
+					1 " SuperSU"										\
+					2 " Magisk"											\
+					3 " Let me choose"									\
+				 --ok-button "ENTER to next"							\
+				 --cancel-button "ESC to back"							\
+				 3>&1 1>&2 2>&3)
+		
+		case $choice in
+			1 )	if ! [ -f "$BASEDIR/data/supersu.zip" ]; then
+					curl -o "$BASEDIR/data/supersu.zip" http://supersuroot.org/downloads/SuperSU-v2.82-201705271822.zip
+				fi
+				rootsel=SuperSU
+				rootzip="$BASEDIR/data/supersu.zip"
+				;;
+			2 )	if ! [ -f "$BASEDIR/data/magisk.zip" ]; then
+					curl -o "$BASEDIR/data/magisk.zip" https://github.com/topjohnwu/Magisk/releases/download/v20.4/Magisk-v20.4.zip
+				fi
+				rootsel=Magisk
+				rootzip="$BASEDIR/data/magisk.zip"
+				;;
+			3 )	while true; do
+					if (rootzip=$($dialog												\
+								  --title "Install Root"								\
+								  --inputbox "Type a zip file (with directory): " 8 50	\
+								  3>&1 1>&2 2>&3)); then
+						while true; do
+							if ! [ -f "$rootzip" ]; then
+								if (rootzip=$($dialog																	\
+											  --title "Install Root"													\
+											  --inputbox "Zip file not found.\nType a zip file (with directory): " 9 50	\
+											  3>&1 1>&2 2>&3)); then
+									continue
+								else
+									root_exit=1
+								fi
+								break
+							fi
+							if ! [ -z $root_exit ]; then
+								flash_root
+								break
+							fi
+							break
+						done
+					else
+						root_exit=1
+					fi
+					break
+				done
+				rootsel="custom root"
+				;;
+			* )	root_exit=1
+				clear
+				break
+				;;
+		esac
+		if ! [ -z $root_exit ]; then
+			flash-root
+			break
+		fi
+		check-sideload
+		case $choice in
+			1 )	break;;
+			2 )	break;;
+		esac
+	done
+}
+
+######## REBOOT OPTIONS ########
+######## TO RECOVERY
+function reboot-recovery () {
+	if ! [ -z $recovery_adb ]; then
+		print_console "Rebooting to recovery..."
+		DO_REBOOT_RECOVERY="adb reboot recovery"
+	elif ! [ -z $recovery_fastboot ] && [ -z $recoveryimg ]; then
+		print_console "Booting to custom recovery..."
+		recoveryimg="$BASEDIR/recovery/twrp.img"
+	elif ! [ -z $recovery_fastboot ]; then
+		print_console "Rebooting to recovery..."
+	fi
+	DO_REBOOT_RECOVERY="fastboot boot $recoveryimg"
+	if ! ($DO_REBOOT_RECOVERY); then
+		print_console "$errorp  Cannot boot to recovery."
+	elif ($DO_REBOOT_RECOVERY) && ! [ -z $recovery_fastboot ]; then
+		print_console "$infop  Download 'recovery' to 'boot' success."
+	fi
+	unset DO_REBOOT_RECOVERY
+}
+
+######## TO NORMAL BOOT
+function reboot-systemdevices () {
+	print_console "Rebooting..."
+	if ! [ -z $reboot_adb ]; then
+		DO_REBOOT_SYSTEM="adb reboot"
+	elif ! [ -z $reboot_fastboot ]; then
+		DO_REBOOT_SYSTEM="fastboot reboot"
+	fi
+	if ! (>& /dev/null 2>&1 $DO_REBOOT_SYSTEM); then
+		print_console "$errorp  Cannot reboot."
+	fi
+	unset DO_REBOOT_SYSTEM
+}
+
+######## TO BOOTLOADER
+function reboot-bootloader () {
+	print_console "Rebooting to bootloader..."
+	if ! [ -z $bootloader_adb ]; then
+		DO_REBOOT_BOOTLOADER="adb reboot bootloader"
+	elif ! [ -z $bootloader_fastboot ]; then
+		DO_REBOOT_BOOTLOADER="fastboot reboot bootloader"
+	fi
+	if ! (>& /dev/null 2>&1 $DO_REBOOT_BOOTLOADER); then
+		print_console "$errorp  Cannot reboot to bootloader."
+	fi
+	unset DO_REBOOT_BOOTLOADER
+}
+
+function start () {
+	echo ------------------------------------ START ------------------------------------
+}
+
+function end () {
+	echo ------------------------------------- END -------------------------------------
+}
+
+function pause () {
+	read -n1 -srp "Press any key to continue..."
+	echo
+}
+
+function prompts () {
+	read -n1 -p "$1" $2
+	echo
+}
+
+function print_console () {
+	echo -e "$1"
+}
+
+
+
+######## START SCRIPT ########
+# First place to start the execution
+BASEFILE=$(basename "$0")
+BASEDIR=$(dirname "$0")
+PATH="$BASEDIR/bin:$PATH"
+errorp="ERROR:"
+cautionp="CAUTION:"
+infop="INFORMATION:"
+maintitle="Whyred Console Toolkit - Version 2.0"
+dialog=whiptail
+if ! [ -x "$(which "$dialog")" ]; then dialog=dialog; fi
+
+if ! (whoami | grep "root" >& /dev/null 2>&1); then
+	print_console "You have not allowed to access this program.\nPlease run this script as root with one of type:"
+	for STRINGS_TEXT in '  •  sudo ./' '  •  sudo bash ' '  •  su -c ./'; do print_console "$STRINGS_TEXT$BASEFILE"; done
+	exit 1
+fi
+
+for STRINGS_TEXT in \
+	'You will running to this program. If you are sure to modificate your device'\
+	'press Y to allow and continue. Otherwise if deny and get out this program,'\
+	'press N. \n'
+do print_console "$STRINGS_TEXT"; done
+while true; do
+	prompts "Do you agree? [Y/N] " yn
+	case $yn in
+		Y|y )	break;;
+		N|n )	exit 1
+				break
+				;;
+		* )		continue;;
 	esac
 done
 
-errorp=ERROR:
-cautionp=CAUTION:
-infop=INFORMATION:
-cd `dirname $0`
+cd $BASEDIR
+if [ -x "$BASEDIR/bin/adb" ]; then
+	print_console "ADB installed on Console Toolkit."
+	print_console "Starting ADB service..."
+	adb start-server
+	echo
+fi
 
-if [ -x $(command -v adb) ]
-	then
-		echo "Starting ADB service..."
-		>& /dev/null 2>&1 adb start-server
-	fi
-
+######## MAIN MENU ########
 # Main Menu Program
-while true
-do
-	for v in adbfastboot_notfound no_connection error codename_false largest_anti not_mount twrp_exit root_exit; do
-		unset $v
-	done
-	for v in recovery_adb recovery_fastboot reboot_recovery bootloader_adb bootloader_fastboot reboot_bootloader; do
-		unset $v
-	done
-	for v in reboot_adb reboot_fastboot reboot_system; do
-		unset $v
-	done
-	clear
-	echo
-	echo "MAIN MENU"
-	echo "=========="
-	echo
-	echo "Current state:"
-	adb devices 2>&1 | grep "device\>"
-	if [ $? -ne 0 ]; then
-		adb devices 2>&1 | grep "recovery\>"
-		if [ $? -ne 0 ]; then
-			fastboot devices 2>&1 | grep "fastboot\>"
-			if [ $? -ne 0 ]; then
-				echo "No connection. Please connect your device to PC."
-			fi
-		fi
+# print_console '\e[0;97;44m'
+while true; do
+	for VAR_SET in \
+		'adbfastboot_notfound' back 'no_connection' error 'codename_false' largest_anti \
+		'not_mount' twrp_exit 'SESSION_CON_ADB' root_exit 'recovery_adb' recovery_fastboot \
+		'reboot_recovery' bootloader_adb 'bootloader_fastboot' reboot_bootloader \
+		'reboot_adb' reboot_fastboot 'reboot_system' MOUNT_SCRIPT 'UNMOUNT_SCRIPT'
+	do unset $VAR_SET; done
+
+	print_console "Current state:"
+	if ! (adb devices 2>&1 | grep "device\>"); then
+	if ! (adb devices 2>&1 | grep "recovery\>"); then
+	if ! (fastboot devices 2>&1 | grep "fastboot\>"); then
+		print_console "Nothing device connection. Plug your device to PC with USB cable."
 	fi
-	echo
-	echo
-	echo "   1.)  Check the bootloader status"
-	echo "   2.)  Flash TWRP"
-	echo "   3.)  Flash Lazyflasher (Disable DM-Verity and Force Encryption)"
-	echo "   4.)  Flash Camera2 API Enabler"
-	echo "   5.)  Flash Root"
-	echo "   6.)  Install Manual Camera Compatibility Test APK"
-	echo "   7.)  Reboot to system"
-	echo "   8.)  Reboot to bootloader"
-	echo "   9.)  Reboot to recovery"
-	echo
-	echo "   A.)  Install ADB and Fastboot programs"
-	echo "   H.)  Show help and about this program"
-	echo "   Q.)  Exit this program"
-	echo
-	read -p "Choose your option: " ahq123456789
-	echo
-	case $ahq123456789 in
+	fi; fi
+	sleep 1.5
+
+	choice=$($dialog												\
+			 --backtitle "$maintitle"								\
+			 --title "Main Menu"									\
+			 --menu "Choose your option:" 20 52 					\
+			 12														\
+				1 " Check the bootloader status" 					\
+				2 " Flash TWRP (Custom recovery)" 					\
+				3 " Flash Disable DM-Verity and Force Encryption"	\
+				4 " Flash Camera2 API Enabler"						\
+				5 " Flash Root"										\
+				6 " Emulate the device shell"						\
+				7 " Reboot to system"								\
+				8 " Reboot to bootloader"							\
+				9 " Reboot to recovery"								\
+				10 " Switch ADB Connection"							\
+				11 " Other"											\
+				12 " Exit the program"								\
+			 --ok-button "ENTER to next"							\
+			 --cancel-button "ESC to refresh"						\
+			 3>&1 1>&2 2>&3)
+	
+	case $choice in
 		1 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
-				check-fastboot
-				if ! [ -z $no_connection ]; then
-					pause
+				check-fastboot; if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
 				fi
-				check-codename
-				if ! [ -z $codename_false ]; then
-					pause
+				check-codename; if ! [ -z $codename_false ]; then
+					end; pause
+					clear
 					continue
 				fi
 				check-unlock
-				pause
+				end; pause
+				clear
 				continue
 				;;
 		2 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
-				check-fastboot
-				if ! [ -z $no_connection ]; then
-					pause
+				check-fastboot; if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
 				fi
-				check-codename
-				if ! [ -z $codename_false ]; then
-					pause
+				check-codename; if ! [ -z $codename_false ]; then
+					end; pause
+					clear
 					continue
 				fi
 				check-antirollback
 				if ! [ -z $largest_anti ]; then
-					pause
+					end; pause
+					clear
 					continue
 				fi
 				if ! [ -z $error ]; then
-					pause
+					end; pause
+					clear
 					continue
 				fi
 				flash-twrp
-				if ! [ -z $twrp_exit ]; then continue; fi
-				if ! [ -z $recoveryimg ]; then
-					echo "Flashing recovery..."
-					fastboot $* flash recovery $recoveryimg
-					if [ $? -ne 0 ]; then echo "$errorp  Failed flash TWRP."
-						else echo "$infop  Flash 'recovery' success."
-					fi
+				if ! [ -z $twrp_exit ]; then
+					clear
+					continue
 				fi
-				pause
+				print_console "Flashing recovery..."
+				if ! [ -z $recoveryimg ] && ! fastboot flash recovery $recoveryimg; then
+					print_console "$errorp  Failed flash TWRP."
+				else
+					print_console "$infop  Flash 'recovery' success."
+				fi
+				end; pause
+				clear
 				continue
 				;;
 		3 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
-				check-sideload
-				if ! [ -z $no_connection ]; then
-					pause
+				check-sideload; if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
 				fi
-				echo "Installing Lazyflasher..."
-				>& /dev/null 2>&1 adb sideload ./data/lazyflasher.zip
-				pause
+				print_console "Installing Lazyflasher..."
+				adb sideload "$BASEDIR/data/lazyflasher.zip"
+				end; pause
+				clear
 				continue
 				;;
 		4 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
-				check-sideload
-				if ! [ -z $no_connection ]; then
-					pause
+				check-sideload; if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
 				fi
-				echo "Installing Camera2 API Enabler..."
-				>& /dev/null 2>&1 adb sideload ./data/cam2api-enabler.zip
+				print_console "Installing Camera2 API Enabler..."
+				adb sideload "$BASEDIR/data/cam2api-enabler.zip"
 				sleep 5
-				echo "Patching build.prop script..."
-				mount-system
-				if ! [ -z $not_mount ]; then
-					pause
+				print_console "Patching build.prop script..."
+				mount-system; if ! [ -z $not_mount ]; then
+					unmount-system
+					end; pause
+					clear
 					continue
 				fi
 				write-prop
 				unmount-system
-				pause
+				end; pause
+				clear
 				continue
 				;;
 		5 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
-				flash-root
-				if ! [ -z $no_connection ]; then
-					pause
+				flash-root; if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
 				fi
-				if ! [ -z $root_exit ]; then continue; fi
-				echo "Installing $rootsel"
+				if ! [ -z $root_exit ]; then
+					clear
+					continue
+				fi
+				print_console "Installing $rootsel..."
 				unset rootsel
 				adb sideload $rootzip
-				pause
+				end; pause
+				clear
 				continue
 				;;
 		6 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
+				SESSION_CON_ADB=1
+				print_console "Trying connect to normal state..."
 				check-devices1
 				if ! [ -z $no_connection ]; then
-					pause
+				print_console "Trying connect to recovery state..."
+				check-devices2
+				if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
-				fi
-				echo "Installing Manual Camera Compatibility Test APK..."
-				adb install ./data/manualcamera.apk 2>&1 | grep "Success\>"
-				if [ $? -ne 0 ]; then
-					echo "$errorp  APK install failed."
-				fi
-				pause
+				fi; fi
+				print_console "To terminate from shell, type 'exit'..."
+				adb shell
+				end; pause
+				clear
 				continue
 				;;
 		7 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
+				SESSION_CON_ADB=1
 				reboot_system=1
+				print_console "Trying reboot from normal state..."
 				check-devices1
 				if ! [ -z $no_connection ]; then
-					check-devices2
-					if ! [ -z $no_connection ]; then
-						check-fastboot
-						if ! [ -z $no_connection ]; then
-							pause
-							continue
-						fi
-					fi
+				print_console "Trying reboot from recovery state..."
+				check-devices2
+				if ! [ -z $no_connection ]; then
+				print_console "Trying reboot from fastboot state..."
+				check-fastboot
+				if ! [ -z $no_connection ]; then
+					end; pause
+					clear
+					continue
 				fi
+				fi; fi
 				reboot-systemdevices
-				pause
+				end; pause
+				clear
 				continue
 				;;
 		8 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
+				SESSION_CON_ADB=1
 				reboot_bootloader=1
+				print_console "Trying reboot from normal state..."
 				check-devices1
 				if ! [ -z $no_connection ]; then
-					check-devices2
-					if ! [ -z $no_connection ]; then
-						check-fastboot
-						if ! [ -z $no_connection ]; then
-							pause
-							continue
-						fi
-					fi
+				print_console "Trying reboot from recovery state..."
+				check-devices2
+				if ! [ -z $no_connection ]; then
+				print_console "Trying reboot from fastboot state..."
+				check-fastboot
+				if ! [ -z $no_connection ]; then
+					end; pause
+					clear
+					continue
 				fi
+				fi; fi
 				reboot-bootloader
-				pause
+				end; pause
+				clear
 				continue
 				;;
 		9 )		start
-				check-adb
-				if ! [ -z $adbfastboot_notfound ]; then
-					pause
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
 					continue
 				fi
+				SESSION_CON_ADB=1
 				reboot_recovery=1
+				print_console "Trying reboot from normal state..."
 				check-devices1
 				if ! [ -z $no_connection ]; then
-					check-devices2
-					if ! [ -z $no_connection ]; then
-						check-fastboot
-						if ! [ -z $no_connection ]; then
-							pause
-							continue
-						fi
-					fi
-				fi
-				reboot-recovery
-				pause
-				continue
-				;;
-
-		[Aa]* )	echo "The installation require a network connection in computer."
-				while true
-				do
-					read -n1 -p "Are you sure to continue install if you already connect to internet? [Y/N] " yn
-					echo
-					case $yn in
-						[Yy]* )	break
-								;;
-						[Nn]* )	back=1
-								break
-								;;
-						* )		continue
-								;;
-					esac
-				done
-				if ! [ -z $back ]; then
-					unset back
+				print_console "Trying reboot from recovery state..."
+				check-devices2
+				if ! [ -z $no_connection ]; then
+				print_console "Trying reboot from fastboot state..."
+				check-fastboot
+				if ! [ -z $no_connection ]; then
+					end; pause
+					clear
 					continue
 				fi
-				echo "Downloading and installing..."
-				if [ -f /etc/debian_version ]; then
-					apt-get install -f adb
-					apt-get install -f fastboot
-				elif [ -f /etc/SuSe-release ]; then
-					zypper install -f adb
-					zypper install -f fastboot
-				elif [ -f /etc/redhat-release ]; then
-					yum install -y adb
-					yum install -y fastboot
-				fi
-				echo "Installation completed"
-				read -n1 -srp "Press any key to continue..."
-				echo
-				continue
-				;;
-		[Hh]* )	clear
-				echo "This program was written and created by Faizal Hamzah with the aim of making"
-				echo "it easier for users to do the work of modifying Android mobile devices."
-				echo
-				echo "Facilities of this program, include:"
-				echo "  1.  Check the status bootloader"
-				echo "  2.  Flash TWRP"
-				echo "  3.  Flash LazyFlasher"
-				echo "  4.  Flash Camera2 API"
-				echo "  5.  Flash Root Access"
-				echo
-				echo "This program is only for those who have a Xiaomi Redmi Note 5 Global/Pro"
-				echo "phone (codename: Whyred)"
-				echo
-				read -n1 -srp "Press any key to continue..."
+				fi; fi
+				reboot-recovery
+				end; pause
 				clear
-				echo "Special thanks:"
-				echo "•  Google - Android"
-				echo "•  TWRP team"
-				echo "•  Orangefox team"
-				echo "•  PitchBlack team"
-				echo "•  Magisk team"
-				echo "•  XDA"
-				echo "•  Xiaomi Flashing Team"
-				echo "•  and the users Xiaomi Redmi Note 5 Global/Pro"
-				echo
-				read -n1 -srp "Press any key to continue..."
-				echo
 				continue
 				;;
-		[Qq]* )	echo "Exiting from program..."
+		10 )	start
+				check-adb; if ! [ -z $adbfastboot_notfound ]; then
+					end; pause
+					clear
+					continue
+				fi
+				check-devices1; if ! [ -z $no_connection ]; then
+					end; pause
+					clear
+					continue
+				fi
+				switch-adb; if ! [ -z $back ]; then
+					clear
+					continue
+				fi
+				end; pause
+				clear
+				continue
+				;;
+		11 )	while true; do
+					choice=$($dialog											\
+							 --backtitle "$maintitle"							\
+							 --title "Other"									\
+							 --menu "Choose your option:" 12 52					\
+							 3													\
+								1 " Install OpenJDK program"					\
+								2 " Install ADB and Fastboot programs"			\
+								3 " Show help and about this program"			\
+							 --ok-button "ENTER to next"						\
+							 --cancel-button "ESC to back"						\
+							 3>&1 1>&2 2>&3)
+            		
+					case $choice in
+						1 )	if ! [ -x $(command -v java) ]; then
+								while true; do
+									if ($dialog --yesno "The installation require a network connection in PC. Do you want to continue install?" 9 51 3>&1 1>&2 2>&3); then
+										break
+									else
+										back=1
+										break
+									fi
+								done
+								if ! [ -z $back ]; then
+									unset back
+									break
+								fi
+								print_console "Downloading and installing..."
+								{
+									i=0
+									echo $i
+      								i=$(expr $i + 1)
+									print_console "OpenJDK (Java Runtime Environment)"
+									echo 5
+									>& /dev/null 2>&1 echo y | apt-get install openjdk-8-jre || error=1
+									>& /dev/null 2>&1 echo y | yum install java-1.8.0-openjdk || error=1
+									echo 100
+								} | $dialog --gauge "Downloading and installing..." 6 39 0
+								if [ $error -ne 1 ]; then
+									$dialog --msgbox "$infop  OpenJDK successfully installed." 7 49
+								else
+									$dialog --msgbox "$errorp  Failed installed. Please try again." 7 47
+								fi
+							else
+								$dialog --msgbox "$infop  OpenJDK already installed." 7 44
+							fi
+							continue
+							;;
+						2 )	if ! [ -f "$BASEDIR/bin/adb" ] && ! [ -f "$BASEDIR/bin/fastboot" ]; then
+								while true; do
+									if ($dialog --yesno "The installation require a network connection in PC. Do you want to continue install?" 9 51 3>&1 1>&2 2>&3); then
+										break
+									else
+										back=1
+										break
+									fi
+								done
+								if ! [ -z $back ]; then
+									unset back
+									break
+								fi
+								print_console "Downloading and installing..."
+								{
+									i=0
+									echo $i
+      								i=$(expr $i + 1)
+									print_console "Android Platform Tools (include ADB and Fastboot)"
+									echo 1
+									if ! [ -x $(command -v curl) ]; then
+										echo 18
+										>& /dev/null 2>&1 echo y | apt-get install curl || error=1
+										>& /dev/null 2>&1 echo y | yum install curl || error=1
+										echo 20
+									elif [ -x $(command -v curl) ]; then
+										echo 23
+										if ! [ -f "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" ]; then
+											echo 24
+											>& /dev/null 2>&1 curl -o "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" https://dl.google.com/android/repository/platform-tools_r30.0.4-linux.zip?hl=id
+											echo 37
+						    			fi
+										if [ -f "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" ]; then
+											if ! [ -x $(command -v unzip) ]; then
+												echo 38
+												>& /dev/null 2>&1 echo y | apt-get install zip || error=1
+												>& /dev/null 2>&1 echo y | yum install zip || error=1
+												echo 40
+											fi
+											echo 41
+											>& /dev/null 2>&1 rm -rf "$BASEDIR/bin/platform-tools/"
+											>& /dev/null 2>&1 unzip -o "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" -d "$BASEDIR/bin/"
+											echo 72
+											cd "$BASEDIR/bin"
+											ln -s platform-tools/adb adb
+											ln -s platform-tools/fastboot fastboot
+											echo 77
+											ln -s platform-tools/dmtracedump dmtracedump
+											echo 80
+											ln -s platform-tools/e2fsdroid e2fsdroid
+											echo 82
+											ln -s platform-tools/hprof-conv hprof-conv
+											echo 83
+											ln -s platform-tools/make_f2fs make_f2fs
+											echo 86
+											ln -s platform-tools/mke2fs mke2fs
+											echo 87
+											ln -s platform-tools/mke2fs.conf mke2fs.conf
+											echo 90
+											ln -s platform-tools/sload_f2fs sload_f2fs
+											echo 94
+											ln -s platform-tools/sqlite3 sqlite3
+											cd ..
+											if ! [ -f "$BASEDIR/bin/adb" ] && ! [ -f "$BASEDIR/bin/fastboot" ]; then
+												error=1
+											fi
+										fi
+										echo 100
+									fi
+								} | $dialog --gauge "Downloading and installing..." 6 39 0
+								if [ $error -ne 1 ]; then
+									$dialog --msgbox "$infop  ADB and Fastboot successfully installed." 7 58
+								else
+									$dialog --msgbox "$errorp  Failed installed. Please try again." 7 47
+								fi
+							else
+								$dialog --msgbox "$infop  ADB and Fastboot already installed." 7 54
+							fi
+							continue
+							;;
+						3 )	$dialog								\
+							--title "About"						\
+							--msgbox							\
+"This program was written and created by Faizal Hamzah with the aim of
+making it easier for users to do the work of modifying Android mobile
+devices. Facilities of this program, include:
+
+  1.  Check the status bootloader (e.g. Unlock and Lock)
+  2.  Flash custom reecovery/TWRP
+  3.  Flash Disable DM-Verity and Force Encryption
+  4.  Flash Camera2 API Enabler
+  5.  Flash Root Access
+  6.  Run Terminal Android in PC
+  7.  Switch ADB Connection
+
+This program is only for those who have a Xiaomi Redmi Note 5
+Global/Pro phone (codename: Whyred)
+
+Special thanks:
+  •   Google — Android
+  •   TWRP team
+  •   Orangefox team
+  •   PitchBlack team
+  •   Magisk team
+  •   XDA
+  •   Xiaomi Flashing Team
+  •   and the users Xiaomi Redmi Note 5 Global/Pro
+  
+Contact person:
+  •   https://api.whatsapp.com/send?phone=6288228419117
+  •   https://www.facebook.com/thefirefoxflasher
+  •   https://www.instagram.com/thefirefoxflasher_" 27 74		\
+							--scrolltext						\
+							--ok-button "ESC to OK"				\
+							continue
+							;;
+						* )	clear
+							break
+							;;
+					esac
+				done
+				continue
+				;;
+		12 )	print_console "Exiting from program..."
 				if [ -x $(command -v adb) ]; then
-					echo "Closing ADB service..."
+					print_console "Closing ADB service..."
 					>& /dev/null 2>&1 adb kill-server
 				fi
-				read -n1 -srp "Press any key to continue..."
-				echo
+				pause
+				# print_console '\e[0m'
 				clear
 				exit 0
 				break
 				;;
-		* )		continue
+		* )		clear
+				continue
 				;;
 	esac
 done
 
+######## END OF SCRIPT ########
 # end of program

@@ -1,6 +1,6 @@
 #!/sbin/sh
 
-ui_print "Mounting partitions . . ."
+echo "Mounting system partition..."
 if mount /system; then
 	exit 0
 fi
@@ -11,7 +11,7 @@ if [ -z $SLOT ]; then
 	SLOT=`grep_cmdline androidboot.slot`
 	[ -z $SLOT ] || SLOT=_${SLOT}
 fi
-[ -z $SLOT ] || ui_print "- Current boot slot: $SLOT"
+[ -z $SLOT ] || echo "Current boot slot: $SLOT"
 
 # Mount ro partitions
 mount_ro_ensure "system$SLOT app$SLOT" /system
