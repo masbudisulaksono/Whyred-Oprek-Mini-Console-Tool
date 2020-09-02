@@ -8,7 +8,7 @@
 #                 The Firefox Flasher
 #                 The Firefox Foundation
 # Created time:   June 14, 2020      10:34pm
-# Modified time:  September 2, 2020  1:50pm
+# Modified time:  September 2, 2020  4:52pm
 #
 #
 # Description:
@@ -639,7 +639,7 @@ PATH="$BASEDIR/bin:$PATH"
 errorp="ERROR:"
 cautionp="CAUTION:"
 infop="INFORMATION:"
-maintitle="Whyred Console Toolkit - Version 2.0"
+maintitle="Whyred Console Toolkit - Version 1.1"
 dialog=whiptail
 if ! [ -x "$(which "$dialog")" ]; then dialog=dialog; fi
 
@@ -684,36 +684,40 @@ while true; do
 		'reboot_adb' reboot_fastboot 'reboot_system' MOUNT_SCRIPT 'UNMOUNT_SCRIPT'
 	do unset $VAR_SET; done
 
-	print_console "Current state:"
-	if ! (adb devices 2>&1 | grep "device\>"); then
-	if ! (adb devices 2>&1 | grep "recovery\>"); then
-	if ! (fastboot devices 2>&1 | grep "fastboot\>"); then
-		print_console "Nothing device connection. Plug your device to PC with USB cable."
+	serialno="$(adb devices 2>&1 | grep "device\>")"
+	if [ "$serialno" == "" ]; then
+		serialno="$(adb devices 2>&1 | grep "recovery\>")"
+		if [ "$serialno" == "" ]; then
+			serialno="$(fastboot devices 2>&1 | grep "fastboot\>")"
+			if [ "$serialno" == "" ]; then
+				serialno="Nothing device connection. Plug your device to PC with USB cable."
+			fi
+		fi
 	fi
-	fi; fi
-	sleep 1.5
-
-	choice=$($dialog												\
-			 --backtitle "$maintitle"								\
-			 --title "Main Menu"									\
-			 --menu "Choose your option:" 20 52 					\
-			 12														\
-				1 " Check the bootloader status" 					\
-				2 " Flash TWRP (Custom recovery)" 					\
-				3 " Flash Disable DM-Verity and Force Encryption"	\
-				4 " Flash Camera2 API Enabler"						\
-				5 " Flash Root"										\
-				6 " Emulate the device shell"						\
-				7 " Reboot to system"								\
-				8 " Reboot to bootloader"							\
-				9 " Reboot to recovery"								\
-				10 " Switch ADB Connection"							\
-				11 " Other"											\
-				12 " Exit the program"								\
-			 --ok-button "ENTER to next"							\
-			 --cancel-button "ESC to refresh"						\
-			 3>&1 1>&2 2>&3)
 	
+	choice=$($dialog													\
+			 --backtitle "$maintitle"									\
+			 --title "Main Menu"										\
+			 --menu "Current state: \n$serialno\nChoose your option:"	\
+			 22 72 														\
+			 12															\
+				1 " Check the bootloader status" 						\
+				2 " Flash TWRP (Custom recovery)" 						\
+				3 " Flash Disable DM-Verity and Force Encryption"		\
+				4 " Flash Camera2 API Enabler"							\
+				5 " Flash Root"											\
+				6 " Emulate the device shell"							\
+				7 " Reboot to system"									\
+				8 " Reboot to bootloader"								\
+				9 " Reboot to recovery"									\
+				10 " Switch ADB Connection"								\
+				11 " Other"												\
+				12 " Exit the program"									\
+			 --ok-button "ENTER to next"								\
+			 --cancel-button "ESC to refresh"							\
+			 3>&1 1>&2 2>&3)
+
+	clear
 	case $choice in
 		1 )		start
 				check-adb; if ! [ -z $adbfastboot_notfound ]; then
@@ -971,7 +975,7 @@ while true; do
 					choice=$($dialog											\
 							 --backtitle "$maintitle"							\
 							 --title "Other"									\
-							 --menu "Choose your option:" 12 52					\
+							 --menu "Choose your option:" 11 52					\
 							 3													\
 								1 " Install OpenJDK program"					\
 								2 " Install ADB and Fastboot programs"			\
@@ -1085,7 +1089,7 @@ while true; do
 										echo 100
 									fi
 								} | $dialog --gauge "Downloading and installing..." 6 39 0
-								if [ $error -ne 1 ]; then
+								if [ "$error" != "1" ]; then
 									$dialog --msgbox "$infop  ADB and Fastboot successfully installed." 7 58
 								else
 									$dialog --msgbox "$errorp  Failed installed. Please try again." 7 47

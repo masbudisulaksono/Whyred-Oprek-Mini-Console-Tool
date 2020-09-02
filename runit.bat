@@ -14,7 +14,7 @@
 :: Whyred Console Toolkit for Windows
 ::
 :: Date/Time Created:          06/14/2020  10:34pm
-:: Date/Time Modified:         09/02/2020  1:50pm
+:: Date/Time Modified:         09/02/2020  4:52pm
 :: Operating System Created:   Windows 10 Pro
 ::
 :: This script created by:
@@ -24,17 +24,17 @@
 ::
 :: VersionInfo:
 ::
-::    File version:      2,0
-::    Product Version:   2,0
+::    File version:      1,1
+::    Product Version:   1,1
 ::
 ::    CompanyName:       The Firefox Flasher
 ::    FileDescription:   Make it easier to modified the Xiaomi Redmi Note 5 Global/Pro device.
-::    FileVersion:       2.0
+::    FileVersion:       1.1
 ::    InternalName:      runit
 ::    LegalCopyright:    The Firefox Foundation
 ::    OriginalFileName:  runit.sh
 ::    ProductName:       Whyred Console Toolkit
-::    ProductVersion:    2.0
+::    ProductVersion:    1.1
 ::
 
 
@@ -431,11 +431,11 @@ goto main-menu
 
 :check-adb
 echo Checking ADB and Fastboot programs...
-if not exist "%SystemRoot%\adb-fastboot.dat" (
+for %%f in ('adb' 'fastboot') do ( if exist "%BASEDIR%\bin\%%f.exe" (
 	echo %errorp%  ADB and Fastboot not installed.
 	set "adbfastboot_notfound=1"
 	call :end2
-)
+) )
 goto :eof
 
 :check-devices1
