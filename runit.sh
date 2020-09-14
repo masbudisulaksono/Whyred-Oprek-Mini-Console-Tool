@@ -7,16 +7,15 @@
 # Created by:     Faizal Hamzah
 #                 The Firefox Flasher
 #                 The Firefox Foundation
-# Created time:   June 14, 2020      10:34pm
-# Modified time:  September 2, 2020  4:52pm
+# Created time:   June 14, 2020        10:34pm
+# Modified time:  September 15, 2020   2:53am
 #
 #
 # Description:
 # This program was written and created by Faizal Hamzah with the aim of
 # making it easier for users to do the work of modifying Android mobile
-# devices.
+# devices. Facilities of this program, include:
 #
-# Facilities of this program, include:
 #  1.  Check the status bootloader (e.g. Unlock and Lock)
 #  2.  Flash custom recovery/TWRP
 #  3.  Flash Disable DM-Verity and Force Encryption
@@ -52,7 +51,7 @@
 function check-adb ()
 {
 	print_console "Checking ADB and Fastboot programs..."
-	if ! [ -x "$BASEDIR/bin/adb" ] && ! [ -x "$BASEDIR/bin/fastboot" ]; then
+	if ! [ -x "$BASEDIR/bin/adb" ] || ! [ -x "$BASEDIR/bin/fastboot" ]; then
 		print_console "$errorp  ADB and Fastboot not installed."
 		adbfastboot_notfound=1
 	fi
@@ -64,7 +63,9 @@ function check-devices1 ()
 	if [ -z $back ]; then
 		print_console "Checking connection..."
 	fi
-	for var in no_connection back; do unset $var; done
+	for var in no_connection back; do
+		unset $var
+	done
 	if [ -z $SESSION_CON_ADB ]; then
 		adb wait-for-device
 	else
@@ -103,7 +104,9 @@ function check-devices2 ()
 	if [ -z $back ]; then
 		print_console "Checking connection..."
 	fi
-	for var in no_connection back; do unset $var; done
+	for var in no_connection back; do
+		unset $var
+	done
 	if [ -z $SESSION_CON_ADB ]; then
 		adb wait-for-recovery
 	else
@@ -251,7 +254,9 @@ Are you ready?" 17 75						\
 				if ! [ -x "$(command -v java)" ]; then
 					$dialog --msgbox "Mi Unlock Tool requires OpenJDK. So install it first before unlocking bootloader." 8 48
 					break
-				else JAVACMD="$(command -v java)"; fi
+				else
+					JAVACMD="$(command -v java)"
+				fi
 				if ! [ -f "$BASEDIR/bin/Mi-Unlock-Tool.jar" ]; then
 					curl -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" http://us1.fastandroid.download/tool/MiUnlock-Linux-Mac.zip
 					unzip -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" MiUnlockTool/bin/MiUnlockTool.jar -d "$BASEDIR/tmp/"
@@ -358,13 +363,16 @@ function flash-twrp ()
 		
 		case $choice in
 			1 )	if ! [ -f "$BASEDIR/recovery/twrp.img" ]; then
-					curl -o "$BASEDIR/recovery/twrp.img" https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img
+					curl -o "$BASEDIR/recovery/twrp.img" \
+						 --referer 'https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img' \
+						 -k https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img
 				fi
 				recoveryimg="$BASEDIR/recovery/twrp.img"
 				break
 				;;
 			2 )	if ! [ -f "$BASEDIR/recovery/ofox.img" ]; then
-					curl -o "$BASEDIR/tmp/ofox.zip" https://files.orangefox.tech/OrangeFox-Beta/whyred/OrangeFox-R11.0_1-Beta-whyred.zip
+					curl -o "$BASEDIR/tmp/ofox.zip" \
+							 https://files.orangefox.download/OrangeFox-Beta/whyred/OrangeFox-R11.0_1-Beta-whyred.zip
 					unzip -o "$BASEDIR/tmp/ofox.zip" recovery.img -d "$BASEDIR/recovery/"
 					mv "$BASEDIR/recovery/recovery.img" "$BASEDIR/recovery/ofox.img"
 					rm -f "$BASEDIR/tmp/ofox.zip"
@@ -373,7 +381,8 @@ function flash-twrp ()
 				break
 				;;
 			3 )	if ! [ -f "$BASEDIR/recovery/pbrp.img" ]; then
-					curl -o "$BASEDIR/tmp/pbrp.zip" https://udomain.dl.sourceforge.net/project/pbrp/whyred/PBRP-whyred-3.0.0-20200801-1730-OFFICIAL.zip
+					curl -o "$BASEDIR/tmp/pbrp.zip" \
+							 https://udomain.dl.sourceforge.net/project/pbrp/whyred/PBRP-whyred-3.0.0-20200801-1730-OFFICIAL.zip
 					unzip -o "$BASEDIR/tmp/pbrp.zip" TWRP/recovery.img -d "$BASEDIR/recovery/"
 					mv "$BASEDIR/recovery/TWRP/recovery.img" "$BASEDIR/recovery/pbrp.img"
 					rm -rf "$BASEDIR/recovery/TWRP"
@@ -458,14 +467,17 @@ function mount-system ()
 	if [ -z $back ]; then
 		MOUNT_SCRIPT="mount-system.sh"
 		UNMOUNT_SCRIPT="unmount-system.sh"
+		print_console "Mounting system..."
 		>& /dev/null 2>&1 adb push "$BASEDIR/data/$MOUNT_SCRIPT" /tmp/
 		>& /dev/null 2>&1 adb push "$BASEDIR/data/$UNMOUNT_SCRIPT" /tmp/
-		>& /dev/null 2>&1 adb shell "chmod 0755 /tmp/$MOUNT_SCRIPT"
-		>& /dev/null 2>&1 adb shell "chmod 0755 /tmp/$UNMOUNT_SCRIPT"
+		>& /dev/null 2>&1 adb shell "chmod u+rwx,g+rx,g-w,o+rx,o-w /tmp/$MOUNT_SCRIPT"
+		>& /dev/null 2>&1 adb shell "chmod u+rwx,g+rx,g-w,o+rx,o-w /tmp/$UNMOUNT_SCRIPT"
 	fi
 	unset back
-	adb shell "/sbin/sh /tmp/$MOUNT_SCRIPT"
-	for SYSTEM_MOUNT in '/system' '/system/system' '/system_root' '/system_root/system'; do >& /dev/null 2>&1 adb pull $SYSTEM_MOUNT/build.prop "$BASEDIR/tmp/"; done
+	>& /dev/null 2>&1 adb shell "/sbin/sh /tmp/$MOUNT_SCRIPT"
+	for SYSTEM_MOUNT in '/system' '/system/system' '/system_root' '/system_root/system'; do
+		>& /dev/null 2>&1 adb pull $SYSTEM_MOUNT/build.prop "$BASEDIR/tmp/"
+	done
 	if ! [ -f "$BASEDIR/tmp/build.prop" ]; then
 		print_console "$errorp  /system not yet mounted."
 		while true; do
@@ -481,21 +493,24 @@ function mount-system ()
 				* )		continue;;
 			esac
 		done
-	else rm -f "$BASEDIR/tmp/build.prop"; fi
+	else
+		rm -f "$BASEDIR/tmp/build.prop"
+	fi
 }
 
 ######## ACTIVATE CAMERA2 API SCRIPT ON ADDON AND BUILD.PROP ########
 function write-prop ()
 {
 	adb push "$BASEDIR/data/patch.sh" /tmp/
-	adb shell "chmod 0755 /tmp/patch.sh"
+	adb shell "chmod u+rwx,g+rx,g-w,o+rx,o-w /tmp/patch.sh"
 	adb shell "/sbin/sh /tmp/patch.sh"
 }
 
 ######## UNMOUNTING /system ########
 function unmount-system ()
 {
-	adb shell "/sbin/sh /tmp/$UNMOUNT_SCRIPT"
+	print_console "Unmounting system..."
+	>& /dev/null 2>&1 adb shell "/sbin/sh /tmp/$UNMOUNT_SCRIPT"
 	>& /dev/null 2>&1 adb shell "rm -rf /tmp/*"
 }
 
@@ -588,12 +603,14 @@ function reboot-recovery ()
 		else
 			print_console "Rebooting to recovery..."
 		fi
-		DO_REBOOT_RECOVERY="fastboot boot $recoveryimg"
+		DO_REBOOT_RECOVERY="fastboot boot \"$recoveryimg\""
 	fi
 	if ! ($DO_REBOOT_RECOVERY); then
 		print_console "$errorp  Cannot boot to recovery."
-	elif ($DO_REBOOT_RECOVERY) && ! [ -z $recovery_fastboot ]; then
-		print_console "$infop  Download 'recovery' to 'boot' success."
+	elif ($DO_REBOOT_RECOVERY); then
+		if ! [ -z $recovery_fastboot ]; then
+			print_console "$infop  Download 'recovery' to 'boot' success."
+		fi
 	fi
 	unset DO_REBOOT_RECOVERY
 }
@@ -659,11 +676,15 @@ startp="------------------------------------ START -----------------------------
 endp="------------------------------------- END -------------------------------------"
 maintitle="Whyred Console Toolkit - Version 1.1"
 dialog=whiptail
-if ! [ -x "$(which "$dialog")" ]; then dialog=dialog; fi
+if ! [ -x "$(which "$dialog")" ]; then
+	dialog=dialog
+fi
 
 if ! (whoami | grep "root" >& /dev/null 2>&1); then
 	print_console "You have not allowed to access this program.\nPlease run this script as root with one of type:"
-	for STRINGS_TEXT in '  •  sudo ./' '  •  sudo bash ' '  •  su -c ./'; do print_console "$STRINGS_TEXT$BASEFILE"; done
+	for STRINGS_TEXT in '  •  sudo ./' '  •  sudo bash ' '  •  su -c ./'; do
+		print_console "$STRINGS_TEXT$BASEFILE"
+	done
 	exit 1
 fi
 
@@ -671,7 +692,9 @@ for STRINGS_TEXT in \
 	'You will running to this program. If you are sure to modificate your device'\
 	'press Y to allow and continue. Otherwise if deny and get out this program,'\
 	'press N. \n'
-do print_console "$STRINGS_TEXT"; done
+do
+	print_console "$STRINGS_TEXT"
+done
 while true; do
 	prompts "Do you agree? [Y/N] " yn
 	case $yn in
@@ -696,11 +719,13 @@ fi
 # print_console '\e[0;97;44m'
 while true; do
 	for VAR_SET in \
-		'adbfastboot_notfound' back 'no_connection' error 'codename_false' largest_anti \
-		'not_mount' twrp_exit 'SESSION_CON_ADB' root_exit 'recovery_adb' recovery_fastboot \
-		'reboot_recovery' bootloader_adb 'bootloader_fastboot' reboot_bootloader \
+		'adbfastboot_notfound' back 'no_connection' error 'codename_false' largest_anti			\
+		'not_mount' twrp_exit 'SESSION_CON_ADB' root_exit 'recovery_adb' recovery_fastboot		\
+		'reboot_recovery' bootloader_adb 'bootloader_fastboot' reboot_bootloader				\
 		'reboot_adb' reboot_fastboot 'reboot_system' MOUNT_SCRIPT 'UNMOUNT_SCRIPT' current_states
-	do unset $VAR_SET; done
+	do
+		unset $VAR_SET
+	done
 
 	serialno_ip="$(adb devices | grep "device\>" | cut -f 1)"
 	current_states="$serialno_ip    device"
@@ -794,10 +819,12 @@ while true; do
 					continue
 				fi
 				print_console "Flashing recovery..."
-				if ! [ -z $recoveryimg ] && ! fastboot flash recovery $recoveryimg; then
-					print_console "$errorp  Failed flash TWRP."
-				else
-					print_console "$infop  Flash 'recovery' success."
+				if ! [ -z $recoveryimg ]; then
+					if ! (fastboot flash recovery "$recoveryimg"); then
+						print_console "$errorp  Failed flash TWRP."
+					else
+						print_console "$infop  Flash 'recovery' success."
+					fi
 				fi
 				print_console "$endp"; pause
 				clear
@@ -815,6 +842,9 @@ while true; do
 					continue
 				fi
 				print_console "Installing Lazyflasher..."
+				if ! [ -f "$BASEDIR/data/lazyflasher.zip" ]; then
+					curl -o "$BASEDIR/data/lazyflasher.zip" https://zackptg5.com/downloads/Disable_Dm-Verity_ForceEncrypt_03.04.2020.zip
+				fi
 				adb sideload "$BASEDIR/data/lazyflasher.zip"
 				print_console "$endp"; pause
 				clear
@@ -864,7 +894,7 @@ while true; do
 				fi
 				print_console "Installing $rootsel..."
 				unset rootsel
-				adb sideload $rootzip
+				adb sideload "$rootzip"
 				print_console "$endp"; pause
 				clear
 				continue
@@ -1028,6 +1058,7 @@ while true; do
 									echo 5
 									>& /dev/null 2>&1 echo y | apt-get install openjdk-8-jre || error=1
 									>& /dev/null 2>&1 echo y | yum install java-1.8.0-openjdk || error=1
+									>& /dev/null 2>&1 echo y | pacman -S jre-openjdk-headless jre-openjdk jdk-openjdk openjdk-doc openjdk-src || error=1
 									echo 100
 								} | $dialog --gauge "Downloading and installing..." 6 39 0
 								if [ $error -ne 1 ]; then
@@ -1040,7 +1071,7 @@ while true; do
 							fi
 							continue
 							;;
-						2 )	if ! [ -f "$BASEDIR/bin/adb" ] && ! [ -f "$BASEDIR/bin/fastboot" ]; then
+						2 )	if ! [ -f "$BASEDIR/bin/adb" ] || ! [ -f "$BASEDIR/bin/fastboot" ]; then
 								while true; do
 									if ($dialog --yesno "The installation require a network connection in PC. Do you want to continue install?" 9 51 3>&1 1>&2 2>&3); then
 										break
@@ -1064,6 +1095,7 @@ while true; do
 										echo 18
 										>& /dev/null 2>&1 echo y | apt-get install curl || error=1
 										>& /dev/null 2>&1 echo y | yum install curl || error=1
+										>& /dev/null 2>&1 echo y | pacman -S curl || error=1
 										echo 20
 									elif [ -x $(command -v curl) ]; then
 										echo 23
@@ -1077,6 +1109,7 @@ while true; do
 												echo 38
 												>& /dev/null 2>&1 echo y | apt-get install zip || error=1
 												>& /dev/null 2>&1 echo y | yum install zip || error=1
+												>& /dev/null 2>&1 echo y | pacman -S zip || error=1
 												echo 40
 											fi
 											echo 41
@@ -1103,7 +1136,7 @@ while true; do
 											echo 94
 											ln -s platform-tools/sqlite3 sqlite3
 											cd ..
-											if ! [ -f "$BASEDIR/bin/adb" ] && ! [ -f "$BASEDIR/bin/fastboot" ]; then
+											if ! [ -f "$BASEDIR/bin/adb" ] || ! [ -f "$BASEDIR/bin/fastboot" ]; then
 												error=1
 											fi
 										fi
