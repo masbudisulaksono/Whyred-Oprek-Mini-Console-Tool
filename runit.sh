@@ -7,8 +7,8 @@
 # Created by:     Faizal Hamzah
 #                 The Firefox Flasher
 #                 The Firefox Foundation
-# Created time:   June 14, 2020        10:34pm
-# Modified time:  September 15, 2020   2:53am
+# Created time:   June 14, 2020      10:34pm
+# Modified time:  October 9, 2020    1:04am
 #
 #
 # Description:
@@ -258,8 +258,10 @@ Are you ready?" 17 75						\
 					JAVACMD="$(command -v java)"
 				fi
 				if ! [ -f "$BASEDIR/bin/Mi-Unlock-Tool.jar" ]; then
-					curl -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" http://us1.fastandroid.download/tool/MiUnlock-Linux-Mac.zip
-					unzip -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" MiUnlockTool/bin/MiUnlockTool.jar -d "$BASEDIR/tmp/"
+					curl -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" \
+							 http://us1.fastandroid.download/tool/MiUnlock-Linux-Mac.zip
+					unzip -o "$BASEDIR/tmp/Mi-Unlock-Tool.zip" MiUnlockTool/bin/MiUnlockTool.jar \
+						  -d "$BASEDIR/tmp/"
 					mv "$BASEDIR/tmp/MiUnlockTool/bin/MiUnlockTool.jar" "$BASEDIR/bin/Mi-Unlock-Tool.jar"
 					rm -rf "$BASEDIR/tmp/MiUnlockTool"
 					rm -f "$BASEDIR/tmp/Mi-Unlock-Tool.zip"
@@ -364,7 +366,7 @@ function flash-twrp ()
 		case $choice in
 			1 )	if ! [ -f "$BASEDIR/recovery/twrp.img" ]; then
 					curl -o "$BASEDIR/recovery/twrp.img" \
-						 --referer 'https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img' \
+						 --referer https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img \
 						 -k https://dl.twrp.me/whyred/twrp-3.4.0-0-whyred.img
 				fi
 				recoveryimg="$BASEDIR/recovery/twrp.img"
@@ -373,7 +375,8 @@ function flash-twrp ()
 			2 )	if ! [ -f "$BASEDIR/recovery/ofox.img" ]; then
 					curl -o "$BASEDIR/tmp/ofox.zip" \
 							 https://files.orangefox.download/OrangeFox-Beta/whyred/OrangeFox-R11.0_1-Beta-whyred.zip
-					unzip -o "$BASEDIR/tmp/ofox.zip" recovery.img -d "$BASEDIR/recovery/"
+					unzip -o "$BASEDIR/tmp/ofox.zip" recovery.img \
+						  -d "$BASEDIR/recovery/"
 					mv "$BASEDIR/recovery/recovery.img" "$BASEDIR/recovery/ofox.img"
 					rm -f "$BASEDIR/tmp/ofox.zip"
 				fi
@@ -383,7 +386,8 @@ function flash-twrp ()
 			3 )	if ! [ -f "$BASEDIR/recovery/pbrp.img" ]; then
 					curl -o "$BASEDIR/tmp/pbrp.zip" \
 							 https://udomain.dl.sourceforge.net/project/pbrp/whyred/PBRP-whyred-3.0.0-20200801-1730-OFFICIAL.zip
-					unzip -o "$BASEDIR/tmp/pbrp.zip" TWRP/recovery.img -d "$BASEDIR/recovery/"
+					unzip -o "$BASEDIR/tmp/pbrp.zip" TWRP/recovery.img \
+						  -d "$BASEDIR/recovery/"
 					mv "$BASEDIR/recovery/TWRP/recovery.img" "$BASEDIR/recovery/pbrp.img"
 					rm -rf "$BASEDIR/recovery/TWRP"
 					rm -f "$BASEDIR/tmp/pbrp.zip"
@@ -531,13 +535,15 @@ function flash-root ()
 		
 		case $choice in
 			1 )	if ! [ -f "$BASEDIR/data/supersu.zip" ]; then
-					curl -o "$BASEDIR/data/supersu.zip" http://supersuroot.org/downloads/SuperSU-v2.82-201705271822.zip
+					curl -Lo "$BASEDIR/data/supersu.zip" \
+							  http://supersuroot.org/downloads/SuperSU-v2.82-201705271822.zip
 				fi
 				rootsel=SuperSU
 				rootzip="$BASEDIR/data/supersu.zip"
 				;;
 			2 )	if ! [ -f "$BASEDIR/data/magisk.zip" ]; then
-					curl -o "$BASEDIR/data/magisk.zip" https://github.com/topjohnwu/Magisk/releases/download/v20.4/Magisk-v20.4.zip
+					curl -Lo "$BASEDIR/data/magisk.zip" \
+							  https://github.com/topjohnwu/Magisk/releases/download/v20.4/Magisk-v20.4.zip
 				fi
 				rootsel=Magisk
 				rootzip="$BASEDIR/data/magisk.zip"
@@ -669,6 +675,8 @@ function print_console ()
 BASEFILE=$(basename "$0")
 BASEDIR=$(dirname "$0")
 PATH="$BASEDIR/bin:$PATH"
+DISTRIBUTION="$( cat /etc/os-release | grep "\<ID*" | cut -f 2 -d '=' )"
+DISTRIBUTION_LIKE="$( cat /etc/os-release | grep "\<ID_LIKE*" | cut -f 2 -d '=' )"
 errorp="ERROR:"
 cautionp="CAUTION:"
 infop="INFORMATION:"
@@ -843,7 +851,8 @@ while true; do
 				fi
 				print_console "Installing Lazyflasher..."
 				if ! [ -f "$BASEDIR/data/lazyflasher.zip" ]; then
-					curl -o "$BASEDIR/data/lazyflasher.zip" https://zackptg5.com/downloads/Disable_Dm-Verity_ForceEncrypt_03.04.2020.zip
+					curl -o "$BASEDIR/data/lazyflasher.zip" \
+							 https://zackptg5.com/downloads/Disable_Dm-Verity_ForceEncrypt_03.04.2020.zip
 				fi
 				adb sideload "$BASEDIR/data/lazyflasher.zip"
 				print_console "$endp"; pause
@@ -1051,14 +1060,19 @@ while true; do
 								fi
 								print_console "Downloading and installing..."
 								{
-									i=0
-									echo $i
-      								i=$(expr $i + 1)
 									print_console "OpenJDK (Java Runtime Environment)"
 									echo 5
-									>& /dev/null 2>&1 echo y | apt-get install openjdk-8-jre || error=1
-									>& /dev/null 2>&1 echo y | yum install java-1.8.0-openjdk || error=1
-									>& /dev/null 2>&1 echo y | pacman -S jre-openjdk-headless jre-openjdk jdk-openjdk openjdk-doc openjdk-src || error=1
+									if [ "$DISTRIBUTION" = "debian" ] || [ "$DISTRIBUTION_LIKE" = "debian" ] || \
+        						       [ "$DISTRIBUTION" = "ubuntu" ] || [ "$DISTRIBUTION_LIKE" = "ubuntu" ]; then
+										>& /dev/null 2>&1 apt -y install openjdk-8-jre || error=1
+									elif [ "$DISTRIBUTION" = "fedora" ] || [ "$DISTRIBUTION_LIKE" = "fedora" ] || \
+                 						 [ "$DISTRIBUTION" = "redhat" ] || [ "$DISTRIBUTION_LIKE" = "redhat" ]; then
+										>& /dev/null 2>&1 dnf -y install java-1.8.0-openjdk || error=1
+									elif [ "$DISTRIBUTION" = "arch" ] || [ "$DISTRIBUTION_LIKE" = "arch" ]; then
+										>& /dev/null 2>&1 pacman -Sy jre-openjdk-headless	 \
+																	 jre-openjdk jdk-openjdk \
+																	 openjdk-doc openjdk-src || error=1
+									fi
 									echo 100
 								} | $dialog --gauge "Downloading and installing..." 6 39 0
 								if [ $error -ne 1 ]; then
@@ -1086,35 +1100,46 @@ while true; do
 								fi
 								print_console "Downloading and installing..."
 								{
-									i=0
-									echo $i
-      								i=$(expr $i + 1)
 									print_console "Android Platform Tools (include ADB and Fastboot)"
 									echo 1
 									if ! [ -x $(command -v curl) ]; then
 										echo 18
-										>& /dev/null 2>&1 echo y | apt-get install curl || error=1
-										>& /dev/null 2>&1 echo y | yum install curl || error=1
-										>& /dev/null 2>&1 echo y | pacman -S curl || error=1
+										if [ "$DISTRIBUTION" = "debian" ] || [ "$DISTRIBUTION_LIKE" = "debian" ] || \
+        						    	   [ "$DISTRIBUTION" = "ubuntu" ] || [ "$DISTRIBUTION_LIKE" = "ubuntu" ]; then
+											>& /dev/null 2>&1 apt -y install curl || error=1
+										elif [ "$DISTRIBUTION" = "fedora" ] || [ "$DISTRIBUTION_LIKE" = "fedora" ] || \
+                 							 [ "$DISTRIBUTION" = "redhat" ] || [ "$DISTRIBUTION_LIKE" = "redhat" ]; then
+											>& /dev/null 2>&1 dnf -y install curl || error=1
+										elif [ "$DISTRIBUTION" = "arch" ] || [ "$DISTRIBUTION_LIKE" = "arch" ]; then
+											>& /dev/null 2>&1 pacman -Sy curl || error=1
+										fi
 										echo 20
 									elif [ -x $(command -v curl) ]; then
 										echo 23
 										if ! [ -f "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" ]; then
 											echo 24
-											>& /dev/null 2>&1 curl -o "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" https://dl.google.com/android/repository/platform-tools_r30.0.4-linux.zip?hl=id
+											curl -so "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" \
+													  https://dl.google.com/android/repository/platform-tools_r30.0.4-linux.zip?hl=id
 											echo 37
 						    			fi
 										if [ -f "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" ]; then
 											if ! [ -x $(command -v unzip) ]; then
 												echo 38
-												>& /dev/null 2>&1 echo y | apt-get install zip || error=1
-												>& /dev/null 2>&1 echo y | yum install zip || error=1
-												>& /dev/null 2>&1 echo y | pacman -S zip || error=1
+												if [ "$DISTRIBUTION" = "debian" ] || [ "$DISTRIBUTION_LIKE" = "debian" ] || \
+        						    			   [ "$DISTRIBUTION" = "ubuntu" ] || [ "$DISTRIBUTION_LIKE" = "ubuntu" ]; then
+													>& /dev/null 2>&1 apt -y install zip || error=1
+												elif [ "$DISTRIBUTION" = "fedora" ] || [ "$DISTRIBUTION_LIKE" = "fedora" ] || \
+                 									 [ "$DISTRIBUTION" = "redhat" ] || [ "$DISTRIBUTION_LIKE" = "redhat" ]; then
+													>& /dev/null 2>&1 dnf -y install zip || error=1
+												elif [ "$DISTRIBUTION" = "arch" ] || [ "$DISTRIBUTION_LIKE" = "arch" ]; then
+													>& /dev/null 2>&1 pacman -Sy zip || error=1
+												fi
 												echo 40
 											fi
 											echo 41
 											>& /dev/null 2>&1 rm -rf "$BASEDIR/bin/platform-tools/"
-											>& /dev/null 2>&1 unzip -o "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" -d "$BASEDIR/bin/"
+											>& /dev/null 2>&1 unzip -o "$BASEDIR/bin/pkg/android-platform-tools-linux.zip" \
+																	-d "$BASEDIR/bin/"
 											echo 72
 											cd "$BASEDIR/bin"
 											ln -s platform-tools/adb adb
